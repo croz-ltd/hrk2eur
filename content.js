@@ -45,6 +45,10 @@ function matchPrice(text) {
 			resultText = text.replace(regex, (match, p1, offset, string) => {
 				return p1 + ' (' + newValue + ' €)';
 			});
+			return resultText;
+		}
+		if (Number.isNaN(number) && bestMatchLength !== 0) { // regex seem to match when only HRK without number is in the text
+			break;
 		}
 	} while (bestMatchLength !== 0);
 
@@ -53,12 +57,8 @@ function matchPrice(text) {
 
 function replacePrice(div) {
 	const result = matchPrice(div.textContent);
-	if (result.length > 0) {
-		const newValue = (result.number / EUR_FACTOR).toFixed(2).toString();
-
-		div.textContent = div.textContent.replace(result.regex, (match, p1, offset, string) => {
-			return p1 + ' (' + newValue + ' €)';
-		});
+	if (result && result.length > 0) {
+		div.textContent = result;
 	}
 }
 
