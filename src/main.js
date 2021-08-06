@@ -68,7 +68,7 @@ function matchPrice(text) {
 
 function replacePrice(div) {
     const result = matchPrice(div.textContent);
-    if (result && result.length > 0) {
+    if (result && result.length > 0 && result.length !== div.textContent.length) {
         div.textContent = result;
     }
 }
