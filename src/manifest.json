@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Helps with the transition period when HRK will be switched with EUR",
   "content_scripts": [{
-    "js": ["content.js"],
+    "js": ["main.js"],
 	"matches": ["https://*/*", "http://*/*"]
   }]
 }
