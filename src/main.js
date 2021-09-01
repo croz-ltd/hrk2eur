@@ -1,14 +1,15 @@
 const EUR_FACTOR = 7.5;
-
+const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong'];
+const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td'];
 const REGEXES = [
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]},  // HRK 2.000,00
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]},  // HRK 2.000,00
     {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, replacementRules: [{old: /,/g, new: ''}]}, // HRK 2,000.00
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, replacementRules: [{old: /\./g, new: ''}]}, // HRK 1.000
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+))/, priceIndex: 3, replacementRules: [{old: /,/g, new: ''}]}, // HRK 20,000
-    {regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]}, // 2.000,00 HRK
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, replacementRules: [{old: /\./g, new: ''}]}, // HRK 1.000
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+))/,           priceIndex: 3, replacementRules: [{old: /,/g, new: ''}]}, // HRK 20,000
+    {regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/,  priceIndex: 2, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]}, // 2.000,00 HRK
     {regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, replacementRules: [{old: /,/g, new: ''}]}, // 2,000.00 HRK
-    {regex: /(([0-9.]+)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, replacementRules: [{old: /\./g, new: ''}]}, // 20.000 kn
-    {regex: /(([0-9,]+)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, replacementRules: [{old: /,/g, new: ''}]}, // 20,000 kn
+    {regex: /(([0-9.]+)\s*(KN|kn|Kn|hrk|HRK))/,           priceIndex: 2, replacementRules: [{old: /\./g, new: ''}]}, // 20.000 kn
+    {regex: /(([0-9,]+)\s*(KN|kn|Kn|hrk|HRK))/,           priceIndex: 2, replacementRules: [{old: /,/g, new: ''}]}, // 20,000 kn
 ];
 
 function maxMatch(match) {
@@ -75,44 +76,31 @@ function replacePrice(div) {
 
 function replacePrices() {
 
-    const textOnlyNodes = [
-        ...document.getElementsByTagName('span'),
-        ...document.getElementsByTagName('b'),
-        ...document.getElementsByTagName('p'),
-        ...document.getElementsByTagName('strong'),
+    const textOnlyNodes = TEXT_ONLY_NODES_TO_CHECK.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
-    ];
-
-    for (let div of textOnlyNodes) {
-        if (div.childNodes.length === 0) {
+    for (let node of textOnlyNodes) {
+        if (node.childNodes && node.childNodes.length === 0) {
             continue;
         }
 
-        for (let node of div.childNodes) {
-            if (node.nodeType !== Node.TEXT_NODE) {
+        for (let textNode of node.childNodes) {
+            if (textNode.nodeType !== Node.TEXT_NODE) {
                 continue;
             }
 
-            replacePrice(node);
+            replacePrice(textNode);
         }
     }
 
-    const otherNodes = [
-        ...document.getElementsByTagName('div'),
-        ...document.getElementsByTagName('dd'),
-        ...document.getElementsByTagName('td'),
-    ]
+    const otherNodes = OTHER_NODES_TO_CHECK.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
-    for (let div of otherNodes) {
-        if (div.childNodes.length !== 1) {
+    for (let node of otherNodes) {
+        if (node.childNodes && node.childNodes.length !== 1 ||
+            node.childNodes[0].nodeType !== Node.TEXT_NODE ) {
             continue;
         }
 
-        if (div.childNodes[0].nodeType !== Node.TEXT_NODE) {
-            continue;
-        }
-
-        replacePrice(div);
+        replacePrice(node);
     }
 
 }
