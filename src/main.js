@@ -109,6 +109,6 @@ replacePrices();
 
 const mutationObserver = new MutationObserver(replacePrices);
 
-mutationObserver.observe(document.body, {childList: true, attributes: true, subtree: true, attributeOldValue: true, attributeFilter: ['class', 'style']});
+mutationObserver.observe(document.body, {childList: true, subtree: true});
 
 export { matchPrice };
