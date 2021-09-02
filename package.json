@@ -1,7 +1,7 @@
 {
-  "name": "hrk2eur-extension",
+  "name": "@croz/hrk2eur",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple script that tracks HRK amounts on the page and switches them with EUR equivalent.",
   "main": "src/main.js",
   "scripts": {
     "test": "jest",
@@ -18,5 +18,8 @@
     "jest": "^27.0.6",
     "parcel-bundler": "^1.12.5",
     "parcel-plugin-web-extension": "^1.6.1"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

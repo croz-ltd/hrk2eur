@@ -1,4 +1,4 @@
-const EUR_FACTOR = 7.5;
+const EUR_FACTOR = 7.483221;
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong'];
 const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td'];
 const REGEXES = [
