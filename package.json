@@ -1,15 +1,14 @@
 {
   "name": "@croz/hrk2eur",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple script that tracks HRK amounts on the page and switches them with EUR equivalent.",
   "main": "src/main.js",
   "scripts": {
     "test": "jest",
     "build": "parcel build src/manifest.json --no-source-maps"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://gitlab.croz.net/jtomic/hrk2eur.git"
+  "publishConfig": {
+    "access": "public"
   },
   "author": "CROZ",
   "license": "ISC",
