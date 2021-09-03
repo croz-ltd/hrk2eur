@@ -2,22 +2,47 @@ const EUR_FACTOR = 7.483221;
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong'];
 const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td'];
 const REGEXES = [
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]},  // HRK 2.000,00
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, replacementRules: [{old: /,/g, new: ''}]}, // HRK 2,000.00
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, replacementRules: [{old: /\./g, new: ''}]}, // HRK 1.000
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+))/,           priceIndex: 3, replacementRules: [{old: /,/g, new: ''}]}, // HRK 20,000
-    {regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/,  priceIndex: 2, replacementRules: [{old: /\./g, new: ''}, {old: /,/g, new: '.'}]}, // 2.000,00 HRK
-    {regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, replacementRules: [{old: /,/g, new: ''}]}, // 2,000.00 HRK
-    {regex: /(([0-9.]+)\s*(KN|kn|Kn|hrk|HRK))/,           priceIndex: 2, replacementRules: [{old: /\./g, new: ''}]}, // 20.000 kn
-    {regex: /(([0-9,]+)\s*(KN|kn|Kn|hrk|HRK))/,           priceIndex: 2, replacementRules: [{old: /,/g, new: ''}]}, // 20,000 kn
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.'},  // HRK 2.000,00
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ','}, // HRK 2,000.00
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/,      priceIndex: 3, thousandSeparator: '.'}, // HRK 1.000
+    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9,]*))/,      priceIndex: 3, thousandSeparator: ','}, // HRK 20,000
+    {regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/,  priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.'}, // 2.000,00 HRK
+    {regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ','}, // 2,000.00 HRK
+    {regex: /(([0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/,      priceIndex: 2, thousandSeparator: '.'}, // 20.000 kn
+    {regex: /(([0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/,      priceIndex: 2, thousandSeparator: ','}, // 20,000 kn
 ];
+const OBSERVER_OPTIONS = {childList: true, subtree: true};
+
+const DEFAULT_CONFIG = {
+    textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
+    otherNodesToCheck: OTHER_NODES_TO_CHECK,
+    eurFactor: EUR_FACTOR,
+    priceRegexList: REGEXES,
+    observerOptions: OBSERVER_OPTIONS,
+};
 
 function maxMatch(match) {
     if (!match) return 0;
     return match[0].length;
 }
 
-function matchPrice(text) {
+function escapeRegexDot(s) {
+    if (s === '.') return '\\.';
+    return s;
+}
+
+function format(amount, decimalSeparator = ",", thousandSeparator = ".") {
+    let formattedAmount = amount;
+    if (decimalSeparator === ",") {
+        formattedAmount = formattedAmount.replace('.', ',');
+    }
+    if (thousandSeparator) {
+        formattedAmount = formattedAmount.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+    }
+    return formattedAmount;
+}
+
+function matchPrice(text, configuration = DEFAULT_CONFIG) {
     if (text.includes('€)')) {
         return null;
     }
@@ -29,22 +54,29 @@ function matchPrice(text) {
     let currentText = text;
 
     do {
-        REGEXES.forEach(listRegex => {
+        configuration.priceRegexList.forEach(listRegex => {
             const match = currentText.match(listRegex.regex);
             if (match && (maxMatch(match) > bestMatchLength)) {
                 if (match.length > bestMatchLength) bestMatchLength = maxMatch(match);
                 let cleanedString = match[listRegex.priceIndex];
-                listRegex.replacementRules.forEach(rule => {
-                    cleanedString = cleanedString.replace(rule.old, rule.new);
-                });
+                if (listRegex.thousandSeparator) {
+                    cleanedString = cleanedString.replace(new RegExp(escapeRegexDot(listRegex.thousandSeparator), 'g'), '');
+                }
+                if (listRegex.decimalSeparator && listRegex.decimalSeparator === ',') {
+                    cleanedString = cleanedString.replace(new RegExp(escapeRegexDot(listRegex.decimalSeparator), 'g'), '.');
+                }
                 number = parseFloat(cleanedString);
-                regex = listRegex.regex;
+                regex = listRegex;
             }
         });
         if (bestMatchLength !== 0 && !Number.isNaN(number)) {
-            const newValue = (number / EUR_FACTOR).toFixed(2).toString();
+            const newValue = format(
+                (number / configuration.eurFactor).toFixed(2),
+                regex.decimalSeparator,
+                regex.thousandSeparator
+            );
             let newText = ""
-            const updatedText = currentText.replace(regex, (match, p1, offset, string) => {
+            const updatedText = currentText.replace(regex.regex, (match, p1, offset, string) => {
                 newText = p1 + ' (' + newValue + ' €)';
                 return newText;
             });
@@ -59,24 +91,20 @@ function matchPrice(text) {
             resultText += currentText;
             currentText = "";
         }
-        if (Number.isNaN(number) && bestMatchLength !== 0) { // regex seem to match when only HRK without number is in the text
-            break;
-        }
     } while (currentText.length > 0);
 
     return resultText;
 }
 
-function replacePrice(div) {
-    const result = matchPrice(div.textContent);
+function replacePrice(div, configuration) {
+    const result = matchPrice(div.textContent, configuration);
     if (result && result.length > 0 && result.length !== div.textContent.length) {
         div.textContent = result;
     }
 }
 
-function replacePrices() {
-
-    const textOnlyNodes = TEXT_ONLY_NODES_TO_CHECK.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
+function replacePrices(configuration) {
+    const textOnlyNodes = configuration.textNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
     for (let node of textOnlyNodes) {
         if (node.childNodes && node.childNodes.length === 0) {
@@ -88,11 +116,11 @@ function replacePrices() {
                 continue;
             }
 
-            replacePrice(textNode);
+            replacePrice(textNode, configuration);
         }
     }
 
-    const otherNodes = OTHER_NODES_TO_CHECK.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
+    const otherNodes = configuration.otherNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
     for (let node of otherNodes) {
         if (node.childNodes && node.childNodes.length !== 1 ||
@@ -100,15 +128,32 @@ function replacePrices() {
             continue;
         }
 
-        replacePrice(node);
+        replacePrice(node, configuration);
     }
 
 }
 
-replacePrices();
+/**
+ *
+ * @param configuration configuration of the watching function. Possible configurable options are:
+ *  - textNodesToCheck - list of strings representing which text only html tags to check
+ *  - otherNodesToCheck - list of strings representing which container html tags to check
+ *  - eurFactor - middle rate of the HRK to EUR, used for calculating equivalent
+ *  - priceRegexList - list of objects which include regexes to check the prices, shaped like this:
+ *      - regex: regex for matching text, must include a group for currency and amount
+ *      - priceIndex: index of the group for the amount
+ *      - decimalSeparator: character used for decimal separation
+ *      - thousandSeparator: character user for separating thousands
+ *  - observerOptions - list of options sent to the MutationObserver
+ */
+function watchPrices(configuration) {
+    const finalConfig = {...DEFAULT_CONFIG, ...(configuration || {})}
 
-const mutationObserver = new MutationObserver(replacePrices);
+    replacePrices(finalConfig);
+    const observeCallback = replacePrices.bind(this, finalConfig);
 
-mutationObserver.observe(document.body, {childList: true, subtree: true});
+    const mutationObserver = new MutationObserver(observeCallback);
+    mutationObserver.observe(document.body, finalConfig.observerOptions);
+}
 
-export { matchPrice };
+export { watchPrices, matchPrice, DEFAULT_CONFIG };

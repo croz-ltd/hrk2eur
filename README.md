@@ -27,8 +27,20 @@ depending on the legal deadlines without compromising the look & feel of the web
 
 This script can be used as an `@croz/hrk2eur` package [npm](https://www.npmjs.com/package/@croz/hrk2eur) or as a `<script>` tag from CDN.
 
-To use it in your npm project, type `npm install @croz/hrk2eur`, and add `import @croz/hrk2eur` to your main script.
+To use it in your npm project, type `npm install @croz/hrk2eur`, and add 
+```
+import {watchPrices} from @croz/hrk2eur
 
-For a CDN usage add the following snippet at the end of your html file: `<script src="https://unpkg.com/@croz/hrk2eur@1.0.0/dist/main.js"></script>`
+watchPrices();
+``` 
+to your main script.
+
+
+For a CDN usage add the following snippet at the end of your html file: 
+
+```
+<script src="https://unpkg.com/@croz/hrk2eur@1.0.0/dist/umd/main.js"></script>
+<script>hrk2eur.watchPrices()</script>
+```
 
  
