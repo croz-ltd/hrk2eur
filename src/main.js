@@ -43,7 +43,7 @@ function format(amount, decimalSeparator = ",", thousandSeparator = ".") {
 }
 
 function matchPrice(text, configuration = DEFAULT_CONFIG) {
-    if (text.includes('€)')) {
+    if (text.includes('€)')) { // skip already switched text
         return null;
     }
 
@@ -106,12 +106,12 @@ function replacePrice(div, configuration) {
 function replacePrices(configuration) {
     const textOnlyNodes = configuration.textNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
-    for (let node of textOnlyNodes) {
+    for (const node of textOnlyNodes) {
         if (node.childNodes && node.childNodes.length === 0) {
             continue;
         }
 
-        for (let textNode of node.childNodes) {
+        for (const textNode of node.childNodes) {
             if (textNode.nodeType !== Node.TEXT_NODE) {
                 continue;
             }
@@ -122,7 +122,7 @@ function replacePrices(configuration) {
 
     const otherNodes = configuration.otherNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 
-    for (let node of otherNodes) {
+    for (const node of otherNodes) {
         if (node.childNodes && node.childNodes.length !== 1 ||
             node.childNodes[0].nodeType !== Node.TEXT_NODE ) {
             continue;
