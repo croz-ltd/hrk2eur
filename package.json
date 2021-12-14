@@ -16,7 +16,7 @@
     "url": "https://github.com/croz-ltd/hrk2eur.git"
   },
   "author": "CROZ",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.15.0",
     "jest": "^27.0.6",
