@@ -1,17 +1,17 @@
-const EUR_FACTOR = 7.483221;
+const EUR_FACTOR = 7.53450;
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong'];
 const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td'];
 const REGEXES = [
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/,  priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.'},  // HRK 2.000,00
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ','}, // HRK 2,000.00
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/,      priceIndex: 3, thousandSeparator: '.'}, // HRK 1.000
-    {regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9,]*))/,      priceIndex: 3, thousandSeparator: ','}, // HRK 20,000
-    {regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/,  priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.'}, // 2.000,00 HRK
-    {regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ','}, // 2,000.00 HRK
-    {regex: /(([0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/,      priceIndex: 2, thousandSeparator: '.'}, // 20.000 kn
-    {regex: /(([0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/,      priceIndex: 2, thousandSeparator: ','}, // 20,000 kn
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // HRK 2.000,00
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // HRK 2,000.00
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/, priceIndex: 3, thousandSeparator: '.' }, // HRK 1.000
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9,]*))/, priceIndex: 3, thousandSeparator: ',' }, // HRK 20,000
+    { regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.' }, // 2.000,00 HRK
+    { regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ',' }, // 2,000.00 HRK
+    { regex: /(([0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: '.' }, // 20.000 kn
+    { regex: /(([0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 kn
 ];
-const OBSERVER_OPTIONS = {childList: true, subtree: true};
+const OBSERVER_OPTIONS = { childList: true, subtree: true };
 
 const DEFAULT_CONFIG = {
     textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
@@ -124,7 +124,7 @@ function replacePrices(configuration) {
 
     for (const node of otherNodes) {
         if (node.childNodes && node.childNodes.length !== 1 ||
-            node.childNodes[0].nodeType !== Node.TEXT_NODE ) {
+            node.childNodes[0].nodeType !== Node.TEXT_NODE) {
             continue;
         }
 
@@ -147,7 +147,7 @@ function replacePrices(configuration) {
  *  - observerOptions - list of options sent to the MutationObserver
  */
 function watchPrices(configuration) {
-    const finalConfig = {...DEFAULT_CONFIG, ...(configuration || {})}
+    const finalConfig = { ...DEFAULT_CONFIG, ...(configuration || {}) }
 
     replacePrices(finalConfig);
     const observeCallback = replacePrices.bind(this, finalConfig);
