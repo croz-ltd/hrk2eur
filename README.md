@@ -43,4 +43,66 @@ For a CDN usage add the following snippet at the end of your html file:
 <script>hrk2eur.watchPrices()</script>
 ```
 
- 
+## Options
+
+### textNodesToCheck
+
+**Type:** `Array`
+
+**Default:** `['span', 'b', 'p', 'strong']`
+
+**Usage:** List of strings representing which text only html tags to check.
+
+### otherNodesToCheck
+
+**Type:** `Array`
+
+**Default:** `['div', 'dd', 'td']`
+
+**Usage:** List of strings representing which container html tags to check.
+
+### eurFactor
+
+**Type:** `Number`
+
+**Default:** `7.53450`
+
+**Usage:** Middle rate of the HRK to EUR, used for calculating equivalent.
+
+### priceRegexList
+
+**Type:** `Array`
+
+**Default:** 
+```javascript
+[
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // HRK 2.000,00
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // HRK 2,000.00
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/, priceIndex: 3, thousandSeparator: '.' }, // HRK 1.000
+    { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9,]*))/, priceIndex: 3, thousandSeparator: ',' }, // HRK 20,000
+    { regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.' }, // 2.000,00 HRK
+    { regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ',' }, // 2,000.00 HRK
+    { regex: /(([0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: '.' }, // 20.000 kn
+    { regex: /(([0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 kn
+]
+```
+
+**Usage:** List of objects which include regexes to check the prices.
+
+Pass an array of objects, object options:
+
+`regex` - regex for matching text, must include a group for currency and amount
+
+`priceIndex` - index of the group for the amount
+
+`decimalSeparator` - character used for decimal separation
+
+`thousandSeparator` - character user for separating thousands
+
+### observerOptions
+
+**Type:** `Object`
+
+**Default:** `{ childList: true, subtree: true }`
+
+**Usage:** Object of options sent to the MutationObserver.
