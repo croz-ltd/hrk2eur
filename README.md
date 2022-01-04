@@ -57,7 +57,7 @@ For a CDN usage add the following snippet at the end of your html file:
 
 **Type:** `Array`
 
-**Default:** `['div', 'dd', 'td']`
+**Default:** `['div', 'dd', 'td', 's']`
 
 **Usage:** List of strings representing which container html tags to check.
 
