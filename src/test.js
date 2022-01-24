@@ -3,7 +3,7 @@
  */
 
 import { test } from '@jest/globals';
-import { matchPrice, DEFAULT_CONFIG } from './main';
+import {matchPrice, DEFAULT_CONFIG, utils, matchHtmlPattern} from './main';
 
 test('750HRK => 750HRK (99.54 €)', () => {
     expect(matchPrice('750HRK')).toBe('750HRK (99,54 €)');
@@ -64,4 +64,66 @@ test('Use custom configuration eurFactor', () => {
 test('Use custom configuration priceRegexList', () => {
     const configuration = { ...DEFAULT_CONFIG, priceRegexList: [] };
     expect(matchPrice('750HRK', configuration)).toBe('750HRK');
+});
+
+test('Check custom html pattern', () => {
+    const element = document.createElement('div')
+    element.innerHTML = `
+        <span class="price--kn">70</span>
+        <div class="price__ul">
+            <span class="price--li">99</span>
+            <small class="price--c">kn/kom</small>
+        </div>`;
+    const regex = /^<div[^>]*>\s*<span[^>]*>\d+<\/span>\s*<div[^>]*>\s*<span[^>]*>\d+<\/span>\s*<small[^>]*>kn\/kom<\/small>\s*<\/div>\s*<\/div>$/;
+    const replaceFunction = (node) => {
+        const kn = node.getElementsByClassName("price--kn")[0];
+        const lp = node.getElementsByClassName("price--li")[0];
+        const price = parseFloat(kn.innerHTML + "." + lp.innerHTML);
+        const priceEur = utils.convertToEur(price);
+        const eurs = priceEur.split(".")[0];
+        const cents = priceEur.split(".")[1];
+        kn.innerHTML = eurs;
+        lp.innerHTML = cents;
+        node.getElementsByClassName("price--c")[0].innerHTML = "€/kom"
+        return node;
+    }
+
+    const configuration = { ...DEFAULT_CONFIG, htmlMatchers: [
+        { regex: regex, replaceHtml: replaceFunction }
+    ]};
+    expect(matchHtmlPattern(configuration, element).innerHTML).toBe(`
+        <span class="price--kn">9</span>
+        <div class="price__ul">
+            <span class="price--li">42</span>
+            <small class="price--c">€/kom</small>
+        </div>`)
+});
+
+test('Skip already converted HTML price', () => {
+    const element = document.createElement('div')
+    element.innerHTML = `
+        <span class="price--kn">70</span>
+        <div class="price__ul">
+            <span class="price--li">99</span>
+            <small class="price--c">kn/kom</small>
+        </div>`;
+    element.setAttribute("euro-converted", true);
+    const regex = /^<div[^>]*>\s*<span[^>]*>\d+<\/span>\s*<div[^>]*>\s*<span[^>]*>\d+<\/span>\s*<small[^>]*>kn\/kom<\/small>\s*<\/div>\s*<\/div>$/;
+    const replaceFunction = (node) => {
+        const kn = node.getElementsByClassName("price--kn")[0];
+        const lp = node.getElementsByClassName("price--li")[0];
+        const price = parseFloat(kn.innerHTML + "." + lp.innerHTML);
+        const priceEur = utils.convertToEur(price);
+        const eurs = priceEur.split(".")[0];
+        const cents = priceEur.split(".")[1];
+        kn.innerHTML = eurs;
+        lp.innerHTML = cents;
+        node.getElementsByClassName("price--c")[0].innerHTML = "€/kom"
+        return node;
+    }
+
+    const configuration = { ...DEFAULT_CONFIG, htmlMatchers: [
+            { regex: regex, replaceHtml: replaceFunction }
+    ]};
+    expect(matchHtmlPattern(configuration, element)).toBe(null);
 });

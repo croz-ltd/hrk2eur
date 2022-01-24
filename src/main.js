@@ -1,24 +1,29 @@
 const EUR_FACTOR = 7.53450;
-const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong'];
-const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td'];
+const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong', 'form', 'div', 'li', 'a', 'option'];
+const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td', 'ul', 'span', 'p'];
 const REGEXES = [
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // HRK 2.000,00
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // HRK 2,000.00
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/, priceIndex: 3, thousandSeparator: '.' }, // HRK 1.000
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9,]*))/, priceIndex: 3, thousandSeparator: ',' }, // HRK 20,000
-    { regex: /(([0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.' }, // 2.000,00 HRK
-    { regex: /(([0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ',' }, // 2,000.00 HRK
-    { regex: /(([0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: '.' }, // 20.000 kn
-    { regex: /(([0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 kn
+    { regex: /(([-|+]?[0-9.]+,[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.' }, // 2.000,00 HRK
+    { regex: /(([-|+]?[0-9,]+\.[0-9]{2})\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ',' }, // 2,000.00 HRK
+    { regex: /(([-|+]?[0-9][0-9.]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: '.' }, // 20.000 kn
+    { regex: /(([-|+]?[0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 kn
+
 ];
 const OBSERVER_OPTIONS = { childList: true, subtree: true };
+
+const OBSERVER_ENABLED = true;
 
 const DEFAULT_CONFIG = {
     textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
     otherNodesToCheck: OTHER_NODES_TO_CHECK,
     eurFactor: EUR_FACTOR,
     priceRegexList: REGEXES,
+    htmlMatchers: [],
     observerOptions: OBSERVER_OPTIONS,
+	  observerEnabled: OBSERVER_ENABLED,
 };
 
 function maxMatch(match) {
@@ -125,12 +130,62 @@ function replacePrices(configuration) {
     for (const node of otherNodes) {
         if (node.childNodes && node.childNodes.length !== 1 ||
             node.childNodes[0].nodeType !== Node.TEXT_NODE) {
+            replaceHtml(configuration, node);
             continue;
         }
 
         replacePrice(node, configuration);
     }
 
+}
+
+function replaceHtml(configuration, div) {
+    const result = matchHtmlPattern(configuration, div);
+    if (result !== null) {
+        div.parentNode.insertBefore(result, div.nextSibling);
+    }
+}
+
+function parseNumber(numberString) {
+    if (numberString.match(/^[-|+]?[0-9.]+(,[0-9]{2})?$/)) {
+        return parseFloat(numberString.replace(/\./g, '').replace(',', '.').replace('+', ''));
+    }
+    if (numberString.match(/^[-|+]?[0-9,]+(\.[0-9]{2})?$/)) {
+        return parseFloat(numberString.replace(',', '').replace('+', ''));
+    }
+}
+
+function findSubNodeIndex(node, regex) {
+    for (let i = 0; i < node.childNodes.length; i++) {
+        if (node.childNodes[i].textContent.match(regex)) {
+            return i;
+        }
+    }
+    return null;
+}
+
+function convertToEur(number, eurFactor = EUR_FACTOR) {
+    return (number / eurFactor).toFixed(2);
+}
+
+const utils = { convertToEur, findSubNodeIndex, parseNumber };
+
+function matchHtmlPattern(configuration, input) {
+    if (input.hasAttribute('euro-converted')) {
+        return null;
+    }
+
+    for (let matcher of configuration.htmlMatchers) {
+        if (input.outerHTML.match(matcher.regex)) {
+            let clone = input.cloneNode(true);
+            clone = matcher.replaceHtml(clone);
+            input.setAttribute('euro-converted', true);
+
+            return clone;
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -147,13 +202,15 @@ function replacePrices(configuration) {
  *  - observerOptions - list of options sent to the MutationObserver
  */
 function watchPrices(configuration) {
-    const finalConfig = { ...DEFAULT_CONFIG, ...(configuration || {}) }
+    const finalConfig = { ...DEFAULT_CONFIG, ...(configuration || {}) };
 
     replacePrices(finalConfig);
-    const observeCallback = replacePrices.bind(this, finalConfig);
+	  if (finalConfig.observerEnabled) {
+		    const observeCallback = replacePrices.bind(this, finalConfig);
 
-    const mutationObserver = new MutationObserver(observeCallback);
-    mutationObserver.observe(document.body, finalConfig.observerOptions);
+		    const mutationObserver = new MutationObserver(observeCallback);
+		    mutationObserver.observe(document.body, finalConfig.observerOptions);
+	  }
 }
 
-export { watchPrices, matchPrice, DEFAULT_CONFIG };
+export { watchPrices, matchPrice, matchHtmlPattern, utils, DEFAULT_CONFIG };
