@@ -39,7 +39,7 @@ to your main script.
 For a CDN usage add the following snippet at the end of your html file: 
 
 ```
-<script src="https://unpkg.com/@croz/hrk2eur@1.0.3/dist/umd/main.js"></script>
+<script src="https://unpkg.com/@croz/hrk2eur@1.1.0/dist/umd/main.js"></script>
 <script>hrk2eur.watchPrices()</script>
 ```
 
