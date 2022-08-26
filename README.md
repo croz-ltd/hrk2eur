@@ -49,7 +49,7 @@ For a CDN usage add the following snippet at the end of your html file:
 
 **Type:** `Array`
 
-**Default:** `['span', 'b', 'p', 'strong']`
+**Default:** `['span', 'b', 'p', 'strong', 'form', 'div', 'li', 'a', 'option']`
 
 **Usage:** List of strings representing which text only html tags to check.
 
@@ -57,7 +57,7 @@ For a CDN usage add the following snippet at the end of your html file:
 
 **Type:** `Array`
 
-**Default:** `['div', 'dd', 'td', 's']`
+**Default:** `['div', 'dd', 'td', 'ul', 'span', 'p', 's']`
 
 **Usage:** List of strings representing which container html tags to check.
 
