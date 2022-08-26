@@ -66,6 +66,11 @@ test('Use custom configuration priceRegexList', () => {
     expect(matchPrice('750HRK', configuration)).toBe('750HRK');
 });
 
+test('Use custom configuration isEurPrimary', () => {
+   const configuration = { ...DEFAULT_CONFIG, isEurPrimary: true };
+   expect(matchPrice('750 HRK', configuration)).toBe('99,54 € (750 HRK)');
+});
+
 test('Check custom html pattern', () => {
     const element = document.createElement('div')
     element.innerHTML = `

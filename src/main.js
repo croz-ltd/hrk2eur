@@ -17,6 +17,7 @@ const OBSERVER_OPTIONS = { childList: true, subtree: true };
 const OBSERVER_ENABLED = true;
 
 const DEFAULT_CONFIG = {
+    isEurPrimary: false,
     textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
     otherNodesToCheck: OTHER_NODES_TO_CHECK,
     eurFactor: EUR_FACTOR,
@@ -82,7 +83,11 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
             );
             let newText = ""
             const updatedText = currentText.replace(regex.regex, (match, p1, offset, string) => {
-                newText = p1 + ' (' + newValue + ' €)';
+                if (configuration.isEurPrimary) {
+                    newText = newValue + ' € ('  + p1 + ')';
+                } else {
+                    newText = p1 + ' (' + newValue + ' €)';
+                }
                 return newText;
             });
             const lastChangedCharIndex = updatedText.indexOf(newText) + newText.length;
@@ -142,7 +147,7 @@ function replacePrices(configuration) {
 function replaceHtml(configuration, div) {
     const result = matchHtmlPattern(configuration, div);
     if (result !== null) {
-        div.parentNode.insertBefore(result, div.nextSibling);
+        div.parentNode.insertBefore(result, configuration.isEurPrimary ? div : div.nextSibling);
     }
 }
 
@@ -191,6 +196,8 @@ function matchHtmlPattern(configuration, input) {
 /**
  *
  * @param configuration configuration of the watching function. Possible configurable options are:
+ *  - isEurPrimary - flag that puts price in EUR in the primary place (before HRK price for text, and
+ *                  before HRK element for HTML)
  *  - textNodesToCheck - list of strings representing which text only html tags to check
  *  - otherNodesToCheck - list of strings representing which container html tags to check
  *  - eurFactor - middle rate of the HRK to EUR, used for calculating equivalent
