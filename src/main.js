@@ -1,6 +1,6 @@
 const EUR_FACTOR = 7.53450;
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong', 'form', 'div', 'li', 'a', 'option'];
-const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td', 'ul', 'span', 'p'];
+const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td', 'ul', 'span', 'p', 's'];
 const REGEXES = [
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // HRK 2.000,00
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // HRK 2,000.00
@@ -28,18 +28,16 @@ const DEFAULT_CONFIG = {
 };
 
 function maxMatch(match) {
-    if (!match) return 0;
-    return match[0].length;
+    return !match ? 0 : match[0].length;
 }
 
 function escapeRegexDot(s) {
-    if (s === '.') return '\\.';
-    return s;
+    return s === '.' ? '\\.' : s;
 }
 
-function format(amount, decimalSeparator = ",", thousandSeparator = ".") {
+function format(amount, decimalSeparator = ',', thousandSeparator = '.') {
     let formattedAmount = amount;
-    if (decimalSeparator === ",") {
+    if (decimalSeparator === ',') {
         formattedAmount = formattedAmount.replace('.', ',');
     }
     if (thousandSeparator) {
@@ -56,7 +54,7 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
     let bestMatchLength = 0;
     let number;
     let regex;
-    let resultText = "";
+    let resultText = '';
     let currentText = text;
 
     do {
@@ -81,8 +79,8 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
                 regex.decimalSeparator,
                 regex.thousandSeparator
             );
-            let newText = ""
-            const updatedText = currentText.replace(regex.regex, (match, p1, offset, string) => {
+            let newText = ''
+            const updatedText = currentText.replace(regex.regex, (match, p1) => {
                 if (configuration.isEurPrimary) {
                     newText = newValue + ' € ('  + p1 + ')';
                 } else {
@@ -99,22 +97,22 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
             bestMatchLength = 0;
         } else if (bestMatchLength === 0) {
             resultText += currentText;
-            currentText = "";
+            currentText = '';
         }
     } while (currentText.length > 0);
 
     return resultText;
 }
 
-function replacePrice(div, configuration) {
-    const result = matchPrice(div.textContent, configuration);
-    if (result && result.length > 0 && result.length !== div.textContent.length) {
-        div.textContent = result;
+function replacePrice(node, configuration) {
+    const result = matchPrice(node.textContent, configuration);
+    if (result && result.length > 0 && result.length !== node.textContent.length) {
+        node.textContent = result;
     }
 }
 
 function replacePrices(configuration) {
-    const textOnlyNodes = configuration.textNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
+    const textOnlyNodes = getMapOfNodes(configuration.textNodesToCheck);
 
     for (const node of textOnlyNodes) {
         if (node.childNodes && node.childNodes.length === 0) {
@@ -130,7 +128,7 @@ function replacePrices(configuration) {
         }
     }
 
-    const otherNodes = configuration.otherNodesToCheck.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
+    const otherNodes = getMapOfNodes(configuration.otherNodesToCheck);
 
     for (const node of otherNodes) {
         if (node.childNodes && node.childNodes.length !== 1 ||
@@ -141,7 +139,10 @@ function replacePrices(configuration) {
 
         replacePrice(node, configuration);
     }
+}
 
+function getMapOfNodes(nodes) {
+    return nodes.flatMap(tagName => Array.from(document.getElementsByTagName(tagName)));
 }
 
 function replaceHtml(configuration, div) {
@@ -206,7 +207,7 @@ function matchHtmlPattern(configuration, input) {
  *      - priceIndex: index of the group for the amount
  *      - decimalSeparator: character used for decimal separation
  *      - thousandSeparator: character user for separating thousands
- *  - observerOptions - list of options sent to the MutationObserver
+ *  - observerOptions - object of options sent to the MutationObserver
  */
 function watchPrices(configuration) {
     const finalConfig = { ...DEFAULT_CONFIG, ...(configuration || {}) };
