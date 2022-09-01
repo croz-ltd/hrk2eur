@@ -47,7 +47,7 @@ function format(amount, decimalSeparator = ',', thousandSeparator = '.') {
 }
 
 function matchPrice(text, configuration = DEFAULT_CONFIG) {
-    if (text.includes('€)')) { // skip already switched text
+    if (configuration.isEurPrimary ? text.includes('€ (') : text.includes('€)')) { // skip already switched text
         return null;
     }
 

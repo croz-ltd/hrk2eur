@@ -71,6 +71,14 @@ test('Use custom configuration isEurPrimary', () => {
    expect(matchPrice('750 HRK', configuration)).toBe('99,54 € (750 HRK)');
 });
 
+test('Skip already converted text.', () => {
+    const configuration1 = { ...DEFAULT_CONFIG, isEurPrimary: true };
+    expect(matchPrice('99,54 € (750 HRK)', configuration1)).toBe(null);
+
+    const configuration2 = { ...DEFAULT_CONFIG };
+    expect(matchPrice('750 HRK (99,54 €)', configuration2)).toBe(null);
+});
+
 test('Check custom html pattern', () => {
     const element = document.createElement('div')
     element.innerHTML = `
