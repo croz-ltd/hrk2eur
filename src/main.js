@@ -1,7 +1,7 @@
 const EUR_FACTOR = 7.53450;
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong', 'form', 'div', 'li', 'a', 'option'];
 const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td', 'ul', 'span', 'p', 's'];
-const REGEXES = [
+const HRK_TO_EUR_REGEXES = [
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // HRK 2.000,00
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // HRK 2,000.00
     { regex: /((KN|kn|Kn|hrk|HRK)\s*([0-9][0-9.]*))/, priceIndex: 3, thousandSeparator: '.' }, // HRK 1.000
@@ -12,16 +12,29 @@ const REGEXES = [
     { regex: /(([-|+]?[0-9][0-9,]*)\s*(KN|kn|Kn|hrk|HRK))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 kn
 
 ];
+const EUR_TO_HRK_REGEXES = [
+    { regex: /((€|EUR|Eur|eur)\s*([0-9.]+,[0-9]{2}))/, priceIndex: 3, decimalSeparator: ',', thousandSeparator: '.' },  // € 2.000,00
+    { regex: /((€|EUR|Eur|eur)\s*([0-9,]+\.[0-9]{2}))/, priceIndex: 3, decimalSeparator: '.', thousandSeparator: ',' }, // € 2,000.00
+    { regex: /((€|EUR|Eur|eur)\s*([0-9][0-9.]*))/, priceIndex: 3, thousandSeparator: '.' }, // € 1.000
+    { regex: /((€|EUR|Eur|eur)\s*([0-9][0-9,]*))/, priceIndex: 3, thousandSeparator: ',' }, // € 20,000
+    { regex: /(([-|+]?[0-9.]+,[0-9]{2})\s*(€|EUR|Eur|eur))/, priceIndex: 2, decimalSeparator: ',', thousandSeparator: '.' }, // 2.000,00 €
+    { regex: /(([-|+]?[0-9,]+\.[0-9]{2})\s*(€|EUR|Eur|eur))/, priceIndex: 2, decimalSeparator: '.', thousandSeparator: ',' }, // 2,000.00 €
+    { regex: /(([-|+]?[0-9][0-9.]*)\s*(€|EUR|Eur|eur))/, priceIndex: 2, thousandSeparator: '.' }, // 20.000 €
+    { regex: /(([-|+]?[0-9][0-9,]*)\s*(€|EUR|Eur|eur))/, priceIndex: 2, thousandSeparator: ',' }, // 20,000 €
+
+];
 const OBSERVER_OPTIONS = { childList: true, subtree: true };
 
 const OBSERVER_ENABLED = true;
 
 const DEFAULT_CONFIG = {
     isEurPrimary: false,
+    convertEurToHrk: false,
     textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
     otherNodesToCheck: OTHER_NODES_TO_CHECK,
     eurFactor: EUR_FACTOR,
-    priceRegexList: REGEXES,
+    priceRegexList: HRK_TO_EUR_REGEXES,
+    eurPriceRegexList: EUR_TO_HRK_REGEXES,
     htmlMatchers: [],
     observerOptions: OBSERVER_OPTIONS,
 	  observerEnabled: OBSERVER_ENABLED,
@@ -47,7 +60,11 @@ function format(amount, decimalSeparator = ',', thousandSeparator = '.') {
 }
 
 function matchPrice(text, configuration = DEFAULT_CONFIG) {
-    if (configuration.isEurPrimary ? text.includes('€ (') : text.includes('€)')) { // skip already switched text
+    if (!configuration.convertEurToHrk) {
+        if (configuration.isEurPrimary ? text.includes('€ (') : text.includes('€)')) { // skip already switched text
+            return null;
+        }
+    } else if (configuration.isEurPrimary ? text.includes('kn)') : text.includes('kn (')) { // skip already switched text
         return null;
     }
 
@@ -56,9 +73,10 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
     let regex;
     let resultText = '';
     let currentText = text;
+    let regexList = configuration.convertEurToHrk ? configuration.eurPriceRegexList : configuration.priceRegexList;
 
     do {
-        configuration.priceRegexList.forEach(listRegex => {
+        regexList.forEach(listRegex => {
             const match = currentText.match(listRegex.regex);
             if (match && (maxMatch(match) > bestMatchLength)) {
                 if (match.length > bestMatchLength) bestMatchLength = maxMatch(match);
@@ -75,17 +93,13 @@ function matchPrice(text, configuration = DEFAULT_CONFIG) {
         });
         if (bestMatchLength !== 0 && !Number.isNaN(number)) {
             const newValue = format(
-                (number / configuration.eurFactor).toFixed(2),
+                configuration.convertEurToHrk ? convertToHrk(number, configuration.eurFactor) : convertToEur(number, configuration.eurFactor),
                 regex.decimalSeparator,
                 regex.thousandSeparator
             );
             let newText = ''
             const updatedText = currentText.replace(regex.regex, (match, p1) => {
-                if (configuration.isEurPrimary) {
-                    newText = newValue + ' € ('  + p1 + ')';
-                } else {
-                    newText = p1 + ' (' + newValue + ' €)';
-                }
+                newText = configuration.convertEurToHrk ? convertTextToHrk(newValue, p1, configuration) : convertTextToEur(newValue, p1, configuration);
                 return newText;
             });
             const lastChangedCharIndex = updatedText.indexOf(newText) + newText.length;
@@ -148,7 +162,8 @@ function getMapOfNodes(nodes) {
 function replaceHtml(configuration, div) {
     const result = matchHtmlPattern(configuration, div);
     if (result !== null) {
-        div.parentNode.insertBefore(result, configuration.isEurPrimary ? div : div.nextSibling);
+        const insertBeforeDiv = (!configuration.convertEurToHrk && configuration.isEurPrimary) || (configuration.convertEurToHrk && !configuration.isEurPrimary);
+        div.parentNode.insertBefore(result, insertBeforeDiv ? div : div.nextSibling);
     }
 }
 
@@ -174,7 +189,27 @@ function convertToEur(number, eurFactor = EUR_FACTOR) {
     return (number / eurFactor).toFixed(2);
 }
 
-const utils = { convertToEur, findSubNodeIndex, parseNumber };
+function convertToHrk(number, eurFactor = EUR_FACTOR) {
+    return (number * eurFactor).toFixed(2);
+}
+
+function convertTextToEur(newValue, p1, configuration = DEFAULT_CONFIG) {
+    if (configuration.isEurPrimary) {
+        return newValue + ' € ('  + p1 + ')';
+    } else {
+        return p1 + ' (' + newValue + ' €)';
+    }
+}
+
+function convertTextToHrk(newValue, p1, configuration = DEFAULT_CONFIG) {
+    if (configuration.isEurPrimary) {
+        return p1 + ' (' + newValue + ' kn)';
+    } else {
+        return newValue + ' kn ('  + p1 + ')';
+    }
+}
+
+const utils = { convertToEur, convertToHrk, findSubNodeIndex, parseNumber };
 
 function matchHtmlPattern(configuration, input) {
     if (input.hasAttribute('euro-converted')) {
@@ -199,6 +234,7 @@ function matchHtmlPattern(configuration, input) {
  * @param configuration configuration of the watching function. Possible configurable options are:
  *  - isEurPrimary - flag that puts price in EUR in the primary place (before HRK price for text, and
  *                  before HRK element for HTML)
+ *  - convertEurToHrk - flag that switches conversion from EUR to HRK (checks for prices in EUR and converts them to HRK)
  *  - textNodesToCheck - list of strings representing which text only html tags to check
  *  - otherNodesToCheck - list of strings representing which container html tags to check
  *  - eurFactor - middle rate of the HRK to EUR, used for calculating equivalent
@@ -207,6 +243,7 @@ function matchHtmlPattern(configuration, input) {
  *      - priceIndex: index of the group for the amount
  *      - decimalSeparator: character used for decimal separation
  *      - thousandSeparator: character user for separating thousands
+ *  - eurPriceRegexList - list of regexes for conversion from EUR to HRK (only applicable if convertEurToHrk is true)
  *  - observerOptions - object of options sent to the MutationObserver
  */
 function watchPrices(configuration) {
