@@ -1,6 +1,6 @@
 {
   "name": "@croz/hrk2eur",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Simple script that tracks HRK amounts on the page and switches them with EUR equivalent.",
   "main": "dist/lib/main.js",
   "scripts": {

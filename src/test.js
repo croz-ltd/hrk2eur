@@ -5,7 +5,7 @@
 import { test } from '@jest/globals';
 import {matchPrice, DEFAULT_CONFIG, utils, matchHtmlPattern} from './main';
 
-const eurToHrkConfiguration = { ...DEFAULT_CONFIG, convertEurToHrk: true, isEurPrimary: true };
+const eurToHrkConfiguration = { ...DEFAULT_CONFIG, convertEurToHrk: true };
 
 test('750HRK => 750HRK (99.54 €)', () => {
     expect(matchPrice('750HRK')).toBe('750HRK (99,54 €)');
@@ -134,12 +134,7 @@ test('Use custom configuration isEurPrimary', () => {
    expect(matchPrice('750 HRK', configuration)).toBe('99,54 € (750 HRK)');
 });
 
-test('Use HRK primary for EUR to HRK conversion', () => {
-    const configuration = { ...DEFAULT_CONFIG, convertEurToHrk: true, isEurPrimary: false };
-    expect(matchPrice('200 €', configuration)).toBe('1.506,90 kn (200 €)');
-});
-
-test('Skip already converted text.', () => {
+test('Skip already converted text HRK.', () => {
     const configuration1 = { ...DEFAULT_CONFIG, isEurPrimary: true };
     expect(matchPrice('99,54 € (750 HRK)', configuration1)).toBe(null);
 
@@ -149,9 +144,6 @@ test('Skip already converted text.', () => {
 
 test('Skip already converted text EUR.', () => {
     expect(matchPrice('100,00 € (753,45 kn)', eurToHrkConfiguration)).toBe(null);
-
-    const configuration2 = { ...DEFAULT_CONFIG, convertEurToHrk: true };
-    expect(matchPrice('753,45 kn (100,00 €)', configuration2)).toBe(null);
 });
 
 test('Check custom html pattern', () => {
@@ -277,4 +269,16 @@ test('Skip already converted HTML price EUR', () => {
             { regex: regex, replaceHtml: replaceFunction }
         ]};
     expect(matchHtmlPattern(configuration, element)).toBe(null);
+});
+
+test('Switch mode to EUR -> HRK automatically if euro is introduced and autoSwitch flag is  set', () => {
+    const configuration = { ...DEFAULT_CONFIG, autoSwitchOnEurIntroduction: true, eurIntroductionDate: new Date('2022-10-10')};
+    expect(matchPrice('100€', configuration)).toBe('100€ (753,45 kn)');
+    expect(matchPrice('750HRK', configuration)).toBe('750HRK');
+});
+
+test('Do not switch mode to EUR -> HRK automatically if euro is introduced and autoSwitch flag is not set', () => {
+    const configuration = { ...DEFAULT_CONFIG, eurIntroductionDate: new Date('2022-10-10')};
+    expect(matchPrice('100€', configuration)).toBe('100€');
+    expect(matchPrice('750HRK', configuration)).toBe('750HRK (99,54 €)');
 });

@@ -1,4 +1,5 @@
 const EUR_FACTOR = 7.53450;
+const EUR_INTRODUCTION_DATE = new Date('2023-01-01');
 const TEXT_ONLY_NODES_TO_CHECK = ['span', 'b', 'p', 'strong', 'form', 'div', 'li', 'a', 'option'];
 const OTHER_NODES_TO_CHECK = ['div', 'dd', 'td', 'ul', 'span', 'p', 's'];
 const HRK_TO_EUR_REGEXES = [
@@ -30,14 +31,16 @@ const OBSERVER_ENABLED = true;
 const DEFAULT_CONFIG = {
     isEurPrimary: false,
     convertEurToHrk: false,
+    autoSwitchOnEurIntroduction: false,
     textNodesToCheck: TEXT_ONLY_NODES_TO_CHECK,
     otherNodesToCheck: OTHER_NODES_TO_CHECK,
     eurFactor: EUR_FACTOR,
+    eurIntroductionDate: EUR_INTRODUCTION_DATE,
     priceRegexList: HRK_TO_EUR_REGEXES,
     eurPriceRegexList: EUR_TO_HRK_REGEXES,
     htmlMatchers: [],
     observerOptions: OBSERVER_OPTIONS,
-	  observerEnabled: OBSERVER_ENABLED,
+    observerEnabled: OBSERVER_ENABLED,
 };
 
 function maxMatch(match) {
@@ -60,11 +63,15 @@ function format(amount, decimalSeparator = ',', thousandSeparator = '.') {
 }
 
 function matchPrice(text, configuration = DEFAULT_CONFIG) {
+    if ((new Date().getTime() > configuration.eurIntroductionDate.getTime()) && configuration.autoSwitchOnEurIntroduction) {
+        configuration.convertEurToHrk = true;
+    }
+    // skip already switched text
     if (!configuration.convertEurToHrk) {
-        if (configuration.isEurPrimary ? text.includes('€ (') : text.includes('€)')) { // skip already switched text
+        if (configuration.isEurPrimary ? text.includes('€ (') : text.includes('€)')) {
             return null;
         }
-    } else if (configuration.isEurPrimary ? text.includes('kn)') : text.includes('kn (')) { // skip already switched text
+    } else if (text.includes('kn)')) {
         return null;
     }
 
@@ -162,7 +169,7 @@ function getMapOfNodes(nodes) {
 function replaceHtml(configuration, div) {
     const result = matchHtmlPattern(configuration, div);
     if (result !== null) {
-        const insertBeforeDiv = (!configuration.convertEurToHrk && configuration.isEurPrimary) || (configuration.convertEurToHrk && !configuration.isEurPrimary);
+        const insertBeforeDiv = (!configuration.convertEurToHrk && configuration.isEurPrimary) || (configuration.convertEurToHrk);
         div.parentNode.insertBefore(result, insertBeforeDiv ? div : div.nextSibling);
     }
 }
@@ -202,11 +209,7 @@ function convertTextToEur(newValue, p1, configuration = DEFAULT_CONFIG) {
 }
 
 function convertTextToHrk(newValue, p1, configuration = DEFAULT_CONFIG) {
-    if (configuration.isEurPrimary) {
-        return p1 + ' (' + newValue + ' kn)';
-    } else {
-        return newValue + ' kn ('  + p1 + ')';
-    }
+    return p1 + ' (' + newValue + ' kn)';
 }
 
 const utils = { convertToEur, convertToHrk, findSubNodeIndex, parseNumber };
@@ -233,11 +236,14 @@ function matchHtmlPattern(configuration, input) {
  *
  * @param configuration configuration of the watching function. Possible configurable options are:
  *  - isEurPrimary - flag that puts price in EUR in the primary place (before HRK price for text, and
- *                  before HRK element for HTML)
+ *                  before HRK element for HTML), only relevant if HRK -> EUR conversion is active
  *  - convertEurToHrk - flag that switches conversion from EUR to HRK (checks for prices in EUR and converts them to HRK)
+ *  - autoSwitchOnEurIntroduction - enables check for the date of EUR introduction (1.1.2023.) and automatically
+ *                   uses EUR -> HRK conversion after that point. If true, ignores convertEurToHrk flag value.
  *  - textNodesToCheck - list of strings representing which text only html tags to check
  *  - otherNodesToCheck - list of strings representing which container html tags to check
  *  - eurFactor - middle rate of the HRK to EUR, used for calculating equivalent
+ *  - eurIntroductionDate - custom date for EUR introduction, helpful for testing how the script will behave after 1.1.2023.
  *  - priceRegexList - list of objects which include regexes to check the prices, shaped like this:
  *      - regex: regex for matching text, must include a group for currency and amount
  *      - priceIndex: index of the group for the amount
@@ -250,12 +256,12 @@ function watchPrices(configuration) {
     const finalConfig = { ...DEFAULT_CONFIG, ...(configuration || {}) };
 
     replacePrices(finalConfig);
-	  if (finalConfig.observerEnabled) {
+	    if (finalConfig.observerEnabled) {
 		    const observeCallback = replacePrices.bind(this, finalConfig);
 
 		    const mutationObserver = new MutationObserver(observeCallback);
 		    mutationObserver.observe(document.body, finalConfig.observerOptions);
-	  }
+	    }
 }
 
 export { watchPrices, matchPrice, matchHtmlPattern, utils, DEFAULT_CONFIG };
