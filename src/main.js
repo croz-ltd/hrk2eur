@@ -169,7 +169,7 @@ function getMapOfNodes(nodes) {
 function replaceHtml(configuration, div) {
     const result = matchHtmlPattern(configuration, div);
     if (result !== null) {
-        const insertBeforeDiv = (!configuration.convertEurToHrk && configuration.isEurPrimary) || (configuration.convertEurToHrk);
+        const insertBeforeDiv = !configuration.convertEurToHrk && configuration.isEurPrimary;
         div.parentNode.insertBefore(result, insertBeforeDiv ? div : div.nextSibling);
     }
 }
